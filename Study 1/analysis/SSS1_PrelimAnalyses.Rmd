@@ -1,0 +1,131 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(here)
+library(lmerTest)
+here::i_am("./Study 1/analysis/SSS1_PrelimAnalyses.Rmd")
+```
+
+```{r}
+fullDf <- as.data.frame(arrow::read_parquet(here("./Study 1/cleaned/fullTest.parquet")))
+fullDfb <- as.data.frame(arrow::read_parquet(here("./Study 1/cleaned/fullTestBig.parquet")))
+
+OSdf <- subset(fullDf, Condition=="OS")
+SOdf <- subset(fullDf, Condition=="SO")
+
+OSdfb <- subset(fullDfb, Condition=="OS")
+SOdfb <- subset(fullDfb, Condition=="SO")
+```
+
+# Generalization greater for Others to Self compared to Self to Others
+
+```{r}
+m<-lmer(eval ~ SE*Condition + (SE | subID) + (1 | trait), fullDf)
+summary(m)
+library(ggeffects)
+ggpredict(m, c("SE","Condition")) %>% plot()
+```
+
+```{r}
+
+```
+
+
+# The difference in generalization is greater for novel relative to previously evaluated traits
+
+```{r}
+m<-lmer(eval ~ SE*Condition*novel + (SE + novel | subID) + (1 | trait), fullDf)
+summary(m)
+ggpredict(m, c("SE","Condition","novel")) %>% plot()
+```
+
+# Do characteristics of the friends moderate how much you generalize to them?
+
+## Closeness
+
+People generalize much more to friends they are closer to than friends they are not close to.
+
+```{r}
+m<-lmer(eval ~ SE*Close + (SE + Close | subID) + (1 | trait), SOdf)
+summary(m)
+ggpredict(m, c("SE","Close")) %>% plot()
+```
+
+## Interpersonal Similarity
+
+```{r}
+m<-lmer(eval ~ SE*InterS + (SE + Close | subID) + (1 | trait), SOdf)
+summary(m)
+ggpredict(m, c("SE","InterS")) %>% plot()
+```
+
+## Interpersonal overlap
+
+```{r}
+m<-lmer(eval ~ SE*SGO + (SE + SGO | subID) + (1 | trait), SOdf)
+summary(m)
+ggpredict(m, c("SE","SGO")) %>% plot()
+```
+
+# Is similarity to friend evals weighted by closeness/interpersonal similarity a stronger predictor?
+
+## Standard Similarity-to-Friends
+
+```{r}
+OS.Standard <- lmer(eval ~ SE + (SE | subID) + (1 | trait), OSdf)
+summary(OS.Standard)
+```
+
+## Closeness
+
+```{r}
+OS.Close <- lmer(eval ~ closeSE + ( closeSE | subID) + (1 | trait), OSdf)
+summary(OS.Close)
+```
+
+## Interpersonal Similarity
+
+```{r}
+OS.InterS <- lmer(eval ~ interSE + ( interSE | subID) + (1 | trait), OSdf)
+summary(OS.InterS)
+```
+
+## Interpersonal overlap
+
+```{r}
+OS.IOS <- lmer(eval ~ iosSE + ( iosSE | subID) + (1 | trait), OSdf)
+summary(OS.IOS)
+```
+
+# Is similarity to friend evals grouped and moderated by friendship characteristics a stronger predictor?
+
+## Standard Similarity-to-Friends
+
+```{r}
+OS.Standard <- lmer(eval ~ SE + (SE | subID) + (1 | trait), OSdfb)
+summary(OS.Standard)
+```
+
+## Closeness
+
+```{r}
+OS.Close <- lmer(eval ~ SE*Close + ( SE | subID / friend) + ( Close | trait), OSdfb)
+summary(OS.Close)
+```
+
+## Interpersonal Similarity
+
+```{r}
+OS.InterS <- lmer(eval ~ SE*InterS + ( SE | subID / friend ) + ( InterS | trait), OSdfb)
+summary(OS.InterS)
+```
+
+## Interpersonal overlap
+
+```{r}
+OS.IOS <- lmer(eval ~ SE*SGO + ( SE | subID) + ( SGO | trait), OSdfb)
+summary(OS.IOS)
+```

@@ -1,0 +1,173 @@
+---
+title: "Generalizing Between Self and Friends"
+format: revealjs
+editor: visual
+---
+
+```{r, echo=FALSE, include=FALSE}
+library(here)
+library(groundhog)
+pkgs <-  c("tidyverse","here", "lmerTest", "sjPlot","broom.mixed", "kableExtra", "ggeffects", "gt", "RColorBrewer", "tm", "psych", "wesanderson","patchwork", "broom.mixed", "gtsummary","lmerTest")
+groundhog.day <- '2023-02-28'
+groundhog.library(pkgs, groundhog.day)
+here::i_am("./Study 1/analysis/SSS1_PrelimAnalyses.Rmd")
+```
+
+```{r, echo=FALSE, include=FALSE}
+fullDf <- as.data.frame(arrow::read_parquet(here("./Study 1/cleaned/fullTest.parquet")))
+fullDfb <- as.data.frame(arrow::read_parquet(here("./Study 1/cleaned/fullTestBig.parquet")))
+
+OSdf <- subset(fullDf, Condition=="OS")
+SOdf <- subset(fullDf, Condition=="SO")
+
+OSdfb <- subset(fullDfb, Condition=="OS")
+SOdfb <- subset(fullDfb, Condition=="SO")
+```
+
+## Methods
+
+1.  Participants indicate five people that come to mind, can be friends, acquaintances, family, coworkers, etc.
+2.  Indicate Inclusion of Self, Interpersonal Similarity, and Social Closeness with each of the five people.
+3.  Participants are randomly assigned to self-evaluate first or evaluate friends first. 30 traits per friend, and 150 traits for self.
+4.  Then, they evaluate friends or self after, respectively.
+
+## Analysis
+
+-   We use an evaluation-weighted similarity measure, reflecting how similar a trait observed during secondary evaluations is to all prior traits, weighted by each trait's prior descriptiveness. A similar trait to current trait *i* that was highly descriptive of a friend will be weighted more than a trait that was similar to non-descriptive trait.
+-   Depending on the condition, the similarity-estimate is different. For self-then-other condition, similarity estimate is "Similarity-to-Self" predicting "Other-Evaluations" while for other-then-self condition, similarity estimate is "Similarity-to-Other" predicting "Self-Evaluations".
+
+# Results
+
+------------------------------------------------------------------------
+
+## Self-then-Others vs. Others-then-Self
+
+Similarity-to-others predicts self-evaluations more than similarity-to-self predicts other-evaluations.
+
+------------------------------------------------------------------------
+
+```{r, echo = FALSE}
+m<-lmer( scale(eval) ~ scale(SE)*Condition + ( scale(SE) | subID) + (1 | trait), fullDf)
+tab_model(m, show.stat=T, show.r2 = T, show.se = T, show.ci = F, pred.labels = c("Intercept", "Similarity-Estimate","Self-then-Other","Sim-Est*Self-then-Other"), string.pred = c("Fixed Effects"), string.stat = "t", digits = 3, emph.p = F)
+```
+
+------------------------------------------------------------------------
+
+```{r, echo = FALSE}
+m<-lmer( eval ~ SE*Condition + ( SE | subID) + (1 | trait), fullDf)
+ggpredict(m, c("SE","Condition")) %>% plot(show.title=F) + xlab("Similarity-Estimate") + ylab("Evaluation") + scale_color_discrete(labels=c("Other-then-Self","Self-then-Other")) + jtools::theme_apa()
+```
+
+------------------------------------------------------------------------
+
+## Effect of Similarity-Estimate for Novel Traits
+
+The effect holds for initially evaluated traits as well as novel traits, and then secondarily it may even be stronger for novel traits
+
+------------------------------------------------------------------------
+
+```{r, echo = FALSE}
+m<-lmer( scale(eval) ~ scale(SE)*Condition*novel + ( scale(SE) + novel | subID) + (1 | trait), fullDf)
+tab_model(m)
+```
+
+------------------------------------------------------------------------
+
+```{r, echo = FALSE}
+ggpredict(m, c("SE","Condition","novel")) %>% plot(show.title=F) + xlab("Similarity-Estimate") + ylab("Evaluation") + scale_color_discrete(labels=c("Other-then-Self","Self-then-Other")) + jtools::theme_apa()
+```
+
+------------------------------------------------------------------------
+
+# Subsetting Self-then-Other Data
+
+------------------------------------------------------------------------
+
+## Similarity-to-Self Depends on Relationship Closeness
+
+Effect of similarity-to-self on other-evaluations stronger for closer friends
+
+------------------------------------------------------------------------
+
+```{r, echo=FALSE}
+m<-lmer( scale(eval) ~ scale(SE)*scale(Close) + ( scale(SE) + scale(Close) | subID) + (1 | trait), SOdf)
+tab_model(m)
+```
+
+------------------------------------------------------------------------
+
+```{r, echo=F}
+m<-lmer( eval ~ SE*Close + ( SE + Close | subID) + (1 | trait), SOdf)
+ggpredict(m, c("SE","Close[1,4,7]")) %>% plot(show.title=F) + xlab("Similarity-to-Self Estimate") + ylab("Evaluation") + scale_color_discrete(labels=c("Low Closeness","Moderate Closeness","High Closeness")) + jtools::theme_apa()
+```
+
+------------------------------------------------------------------------
+
+## Similarity-to-Self Depends on Interpersonal Similarity
+
+Effect of similarity-to-self on other-evaluations stronger for more similar friends
+
+------------------------------------------------------------------------
+
+```{r, echo=F}
+m<-lmer( scale(eval) ~ scale(SE)*scale(InterS) + ( scale(SE) + scale(InterS) | subID) + (1 | trait), SOdf)
+tab_model(m)
+```
+
+------------------------------------------------------------------------
+
+```{r,echo=F}
+m<-lmer( eval ~ SE*InterS + ( SE + InterS | subID) + (1 | trait), SOdf)
+ggpredict(m, c("SE","InterS[1,4,7]")) %>% plot(show.title=F) + xlab("Similarity-to-Self Estimate") + ylab("Evaluation") + scale_color_discrete(labels=c("Low Similarity","Moderate Similarity","High Similarity")) + jtools::theme_apa()
+```
+
+------------------------------------------------------------------------
+
+## Similarity-to-Self Depends on Interpersonal Overlap
+
+Effect of similarity-to-self on friend evaluations stronger for closer friends
+
+```{r,echo=F}
+m<-lmer(eval ~ SE*SGO + (SE + SGO | subID) + (1 | trait), SOdf)
+tab_model(m)
+```
+
+------------------------------------------------------------------------
+
+```{r}
+m<-lmer( eval ~ SE*SGO + ( SE + SGO | subID) + (1 | trait), SOdf)
+ggpredict(m, c("SE","SGO[1,4,7]")) %>% plot(show.title=F) + xlab("Similarity-to-Self Estimate") + ylab("Evaluation") + scale_color_discrete(labels=c("Low Self-Friend Overlap","Moderate Self-Friend Overlap","High Self-Friend Overlap")) + jtools::theme_apa()
+```
+
+# Subsetting Other-then-Self Data
+
+Similarity-Estimate is average across all 90 observations of "training" data, so it's unclear how to look at a moderator here. I can split up the average separately for each 18 observations per friend but it's a worse predictor then because the mean is noisier. So right now, unclear how to examine moderator in other direction.
+
+------------------------------------------------------------------------
+
+# Miscellaneous Individual Differences
+
+------------------------------------------------------------------------
+
+## More Lonely people project onto friends more
+
+```{r,echo=F}
+m<-lmer(eval ~ SE*Condition*Lonely + (SE | subID) + (1 | trait), fullDf)
+ggpredict(m, c("SE","Lonely","Condition")) %>% plot(show.title=F)
+```
+
+------------------------------------------------------------------------
+
+## More interdependent people project onto friends more
+
+```{r,echo=F}
+m<-lmer(eval ~ SE*Condition*SING.Inter + (SE | subID) + (1 | trait), fullDf)
+ggpredict(m, c("SE","SING.Inter","Condition")) %>% plot(show.title=F)
+```
+
+## People with stronger social networks project onto friends more
+
+```{r,echo=F}
+m<-lmer(eval ~ SE*Condition*FNS + (SE | subID) + (1 | trait), fullDf)
+ggpredict(m, c("SE","FNS","Condition")) %>% plot(show.title=F)
+```
